@@ -51,7 +51,13 @@ Running via the CLI:
 ./run-on-holo.sh
 ```
 
-Running with holo1.5 as localizer (best performance):
+<!-- this is working perfectly -->
+Running with holo1.5native as localizer (best performance):
+```bash
+./run-on-holo-1-5-native.sh
+```
+<!-- you can still test the original model -->
+
 ```bash
 ./run-on-holo-1-5.sh
 ```
