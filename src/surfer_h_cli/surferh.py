@@ -91,11 +91,11 @@ def execute_navigation_action(navigation_action: dict, browser: SimpleWebBrowser
         if len(new_tabs) > len(previous_tabs):
             browser.focus_tab(browser.find_newer_tab(previous_tabs, new_tabs).index)
     elif action == "write_element":
+        # Click on the element first to focus it
         browser.click_at(navigation_action["x"], navigation_action["y"])
         time.sleep(0.5)
         browser.write(navigation_action["content"], n_backspaces=100)
         time.sleep(0.5)
-        browser.write("\n")
     elif action == "scroll":
         browser.scroll(navigation_action["direction"])
     elif action == "go_back":

@@ -1,4 +1,5 @@
 from io import BytesIO
+import time
 
 from PIL import Image
 from pydantic import BaseModel
@@ -112,19 +113,87 @@ class SimpleWebBrowserTools:
     def click_at(self, x: int, y: int):
         """Click at specific coordinates"""
         assert self.driver
-        actions = ActionChains(self.driver)
-        actions.move_by_offset(x, y).click().perform()
-        actions.reset_actions()
+        
+        # Check for alerts and accept them first
+        try:
+            alert = self.driver.switch_to.alert
+            alert.accept()
+            time.sleep(0.2)
+        except:
+            pass
+        
+        # Find element at coordinates
+        element = self.driver.execute_script(f"return document.elementFromPoint({x}, {y});")
+        if element:
+            # Debug: print what element we found
+            tag = element.tag_name
+            elem_id = element.get_attribute('id')
+            elem_class = element.get_attribute('class')
+            placeholder = element.get_attribute('placeholder')
+            print(f"🔍 DEBUG: Clicking at ({x}, {y}) -> <{tag}> id='{elem_id}' class='{elem_class}' placeholder='{placeholder}'")
+            
+            # Check if it's a submit button - trigger form submission directly
+            tag_name = element.tag_name.lower()
+            element_type = element.get_attribute('type')
+            
+            if tag_name == 'button' and (element_type == 'submit' or not element_type):
+                # Find the form and trigger submit event
+                self.driver.execute_script("""
+                    var button = arguments[0];
+                    var form = button.closest('form');
+                    if (form) {
+                        // Trigger the form's onsubmit handler if it exists
+                        if (form.onsubmit) {
+                            var event = new Event('submit', {bubbles: true, cancelable: true});
+                            form.dispatchEvent(event);
+                        } else {
+                            form.submit();
+                        }
+                    } else {
+                        button.click();
+                    }
+                """, element)
+                time.sleep(0.5)
+                return
+            
+            # Regular click for non-submit elements
+            self.driver.execute_script("arguments[0].scrollIntoView(true);", element)
+            time.sleep(0.1)
+            try:
+                element.click()
+            except:
+                self.driver.execute_script("arguments[0].click();", element)
+                time.sleep(0.1)
 
     def write(self, text: str, n_backspaces: int = 0):
         """Write text, optionally clearing with backspaces first"""
         assert self.driver
+        
+        # Check for alerts and accept them
+        try:
+            alert = self.driver.switch_to.alert
+            alert.accept()
+        except:
+            pass
+        
         active_element = self.driver.switch_to.active_element
-        if active_element is None:
+        
+        # If no element is focused or it's the body, we failed to click on an input
+        if active_element is None or active_element.tag_name.lower() == 'body':
+            print(f"⚠️  WARNING: No input field is focused! Cannot write text.")
             return
-        if n_backspaces > 0:
-            active_element.send_keys(Keys.BACKSPACE * n_backspaces)
-
+        
+        # Verify we're on an input or textarea
+        if active_element.tag_name.lower() not in ['input', 'textarea']:
+            print(f"⚠️  WARNING: Focused element is <{active_element.tag_name}>, not an input field!")
+            return
+        
+        # Clear the field first using Selenium's clear method
+        try:
+            active_element.clear()
+        except:
+            pass
+        
         active_element.send_keys(text)
 
     def scroll(self, direction: str):

@@ -1,0 +1,35 @@
+# Main Goal
+Your primary goal is to log into the web application and confirm that you have successfully reached the dashboard.
+
+# Critical Instructions
+- You must interact with the ACTUAL input fields and buttons, not their labels or containers
+- When describing elements for localization, be extremely specific about the interactive element itself
+- Verify after each action that the field was properly filled before proceeding
+
+# Step-by-Step Instructions
+
+## Step 1: Locate and Fill the Username Field
+- The page is a login form with a username input field
+- The username field is a text input box with placeholder "Benutzername *"
+- IMPORTANT: You must click on the actual INPUT FIELD (the white/light colored rectangular box where text is entered), NOT the label text
+- Once the field is focused, type "admin" into it
+- Verify that "admin" appears in the username field before proceeding
+
+## Step 2: Locate and Fill the Password Field
+- Below the username field, there is a password input field
+- The password field is a text input box with placeholder "Passwort"
+- IMPORTANT: Click on the actual PASSWORD INPUT FIELD (the rectangular box), NOT the label or placeholder text
+- Once the field is focused, type "password123" into it
+- Verify that the password field shows masked characters (dots or asterisks) before proceeding
+
+## Step 3: Click the Submit Button
+- Below the password field, there is a submit button with the text "Anmelden"
+- IMPORTANT: Click on the BUTTON itself (the rectangular clickable area with "Anmelden" text)
+- The button should be clearly visible as a clickable element
+- Click this button to submit the login form
+
+## Step 4: Verify the Outcome
+- After clicking "Anmelden", the page should automatically redirect
+- Check the current URL or page title to confirm you are on "dashboard.html"
+- Look for dashboard-specific elements (like "Dashboard" heading, logout button, tracking interface)
+- Your task is complete once you confirm you are successfully logged in and on the dashboard page

@@ -7,7 +7,7 @@ name = "surfer-h-cli"
 version = "0.1.0"
 description = "Open source version of HAI Surfer H agent"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.13"
 dependencies = [
   "openai>=1.93.0",
   "pillow>=8,<=11.1",

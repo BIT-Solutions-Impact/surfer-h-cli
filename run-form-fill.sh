@@ -9,11 +9,12 @@ eval "$(uv run python load_env.py HAI_API_KEY HAI_MODEL_URL_NAVIGATION HAI_MODEL
 echo ""
 
 # Task configuration
-# Read task from instructions.txt
-TASK=$(cat instructions.txt | sed -z 's/\n/ /g' | sed 's/  */ /g')
-URL="file://$(pwd)/automation_forms_filling/login.html"
+# The task is read from the instructions.txt file
+TASK=$(cat instructions.txt)
+# The URL points to the local login form.
+URL="file:///home/justine/Documents/surfer-h-cli/automation_forms_filling/login.html"
 
-echo "🎯 Starting task: $TASK"
+echo "🎯 Starting task from instructions.txt"
 echo "🌐 Target URL: $URL"
 echo "🤖 Model: $HAI_MODEL_NAME_NAVIGATION"
 echo "🤖 Model: $HAI_MODEL_NAME_LOCALIZATION"
@@ -23,7 +24,7 @@ echo ""
 echo "📦 Syncing dependencies..."
 uv sync
 
-# Set up API keys for the
+# Set up API keys for the run
 export API_KEY_NAVIGATION="$HAI_API_KEY"
 export API_KEY_LOCALIZATION="$HAI_API_KEY"
 
@@ -37,6 +38,4 @@ uv run surfer-h-cli \
     --temperature_localization 0.7 \
     --base_url_navigation "$HAI_MODEL_URL_NAVIGATION" \
     --model_name_navigation "$HAI_MODEL_NAME_NAVIGATION" \
-    --temperature_navigation 0.0 \
-    --browser_width 1920 \
-    --browser_height 1080
+    --temperature_navigation 0.0

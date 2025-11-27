@@ -1,0 +1,11 @@
+Complete these steps IN ORDER:
+
+1. Fill #username with "admin"
+2. Fill #password with "password123"  
+3. Click .btn-login
+4. Fill #shipmentNo with "SHIP001"
+5. Click .btn-search (the search button)
+6. Extract "SHIP001" from the results table
+7. Return answer with extracted shipment ID
+
+DO NOT skip steps. Complete one step at a time.

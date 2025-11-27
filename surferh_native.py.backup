@@ -1,0 +1,304 @@
+#!/usr/bin/env python3
+"""
+Surfer-H Native DOM Approach
+Uses HTML parsing and CSS selectors instead of screenshot coordinates
+"""
+
+import time
+import json
+from openai import OpenAI
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException
+from src.surfer_h_cli.simple_browser import SimpleWebBrowserTools
+
+
+def get_page_html(browser: SimpleWebBrowserTools) -> str:
+    """Extract the HTML content of the current page"""
+    assert browser.driver
+    return browser.driver.page_source
+
+
+def create_navigation_prompt(task: str, html: str, history: list) -> str:
+    """Create prompt for the navigation model using HTML instead of screenshots"""
+    history_str = "\n".join([f"Step {i}: {h}" for i, h in enumerate(history)])
+    
+    return f"""You are a web automation agent. Your task is to complete the following goal by interacting with a web page.
+
+TASK: {task}
+
+CURRENT PAGE HTML (simplified):
+{html[:5000]}  
+
+PREVIOUS ACTIONS COMPLETED:
+{history_str if history else "None - this is the first step"}
+
+CRITICAL RULES:
+1. You MUST complete actions in the EXACT order specified in the task
+2. Do NOT skip any steps
+3. Only proceed to the next step after the previous one is confirmed complete
+4. Return ONLY valid JSON with NO extra characters
+
+You must return a JSON object with one of these actions:
+
+1. FILL A FIELD:
+{{
+  "action": "fill_field",
+  "selector": "CSS selector for the input field",
+  "content": "text to type"
+}}
+
+2. CLICK AN ELEMENT:
+{{
+  "action": "click_element",
+  "selector": "CSS selector for the element to click"
+}}
+
+3. EXTRACT TEXT:
+{{
+  "action": "extract_text",
+  "selector": "CSS selector for the element containing the text"
+}}
+
+4. TASK COMPLETE:
+{{
+  "action": "answer",
+  "content": "Description of what was accomplished"
+}}
+
+IMPORTANT:
+- Use precise CSS selectors: #id, .class, input[placeholder="text"], button[type="submit"]
+- Only return ONE action at a time
+- Do NOT add extra closing braces
+- Return ONLY the JSON object, nothing else
+
+Based on the previous actions, what is the NEXT action to take?"""
+
+
+def execute_action(action: dict, browser: SimpleWebBrowserTools) -> tuple[bool, str]:
+    """Execute an action using native Selenium methods"""
+    assert browser.driver
+    
+    try:
+        if action["action"] == "fill_field":
+            selector = action["selector"]
+            content = action["content"]
+            
+            print(f"🔍 Finding element: {selector}")
+            element = browser.driver.find_element(By.CSS_SELECTOR, selector)
+            
+            print(f"✍️  Filling field with: {content}")
+            element.clear()
+            element.send_keys(content)
+            
+            # Verify
+            value = element.get_attribute("value")
+            if value == content:
+                print(f"✅ Successfully filled field")
+                return True, f"Filled {selector} with '{content}'"
+            else:
+                print(f"⚠️  Field value mismatch: expected '{content}', got '{value}'")
+                return False, f"Failed to fill {selector}"
+                
+        elif action["action"] == "click_element":
+            selector = action["selector"]
+            
+            print(f"🔍 Finding element: {selector}")
+            element = browser.driver.find_element(By.CSS_SELECTOR, selector)
+            
+            print(f"🖱️  Clicking element")
+            element.click()
+            time.sleep(1)  # Wait for page response
+            
+            print(f"✅ Successfully clicked")
+            return True, f"Clicked {selector}"
+            
+        elif action["action"] == "extract_text":
+            selector = action["selector"]
+            
+            print(f"🔍 Finding element: {selector}")
+            element = browser.driver.find_element(By.CSS_SELECTOR, selector)
+            
+            text = element.text.strip()
+            print(f"📄 Extracted text: {text}")
+            print(f"\n{'='*60}")
+            print(f"🎯 EXTRACTED SHIPMENT ID: {text}")
+            print(f"{'='*60}\n")
+            
+            return True, f"Extracted text: {text}"
+            
+        elif action["action"] == "answer":
+            print(f"✅ Task complete: {action['content']}")
+            return True, action["content"]
+            
+        else:
+            print(f"❌ Unknown action: {action['action']}")
+            return False, f"Unknown action type"
+            
+    except NoSuchElementException:
+        print(f"❌ Element not found: {action.get('selector', 'unknown')}")
+        return False, f"Element not found: {action.get('selector')}"
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return False, f"Error: {str(e)}"
+
+
+def run_agent(
+    task: str,
+    url: str,
+    api_key: str,
+    model_url: str,
+    model_name: str,
+    max_steps: int = 30
+):
+    """Main agent loop using native DOM approach"""
+    
+    # Initialize browser
+    browser = SimpleWebBrowserTools()
+    browser.open_browser(headless=False, width=1920, height=1080, action_timeout=10)
+    
+    # Initialize OpenAI client
+    client = OpenAI(api_key=api_key, base_url=model_url)
+    
+    # Navigate to URL
+    print(f"🌐 Navigating to: {url}")
+    browser.goto(url)
+    time.sleep(2)
+    
+    history = []
+    
+    for step in range(max_steps):
+        print(f"\n{'='*60}")
+        print(f"🎉 Step {step}")
+        print(f"{'='*60}")
+        
+        # Get current page HTML
+        html = get_page_html(browser)
+        
+        # Get action from model
+        prompt = create_navigation_prompt(task, html, history)
+        
+        print(f"🤖 Asking model for next action...")
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.0
+        )
+        
+def parse_json_response(response_text: str) -> dict:
+    """Robustly parse JSON response, fixing common formatting issues"""
+    import re
+    
+    # Clean the response
+    response_text = response_text.strip()
+    
+    # Method 1: Try direct parsing
+    try:
+        return json.loads(response_text)
+    except:
+        pass
+    
+    # Method 2: Fix extra closing braces
+    try:
+        open_braces = response_text.count('{')
+        close_braces = response_text.count('}')
+        if close_braces > open_braces:
+            # Remove extra closing braces from the end
+            response_text = response_text.rstrip('}')
+            response_text += '}'
+        return json.loads(response_text)
+    except:
+        pass
+    
+    # Method 3: Extract first valid JSON object
+    try:
+        # Find the first { and matching }
+        start = response_text.find('{')
+        if start == -1:
+            raise ValueError("No JSON object found")
+        
+        # Count braces to find the matching closing brace
+        depth = 0
+        for i in range(start, len(response_text)):
+            if response_text[i] == '{':
+                depth += 1
+            elif response_text[i] == '}':
+                depth -= 1
+                if depth == 0:
+                    json_str = response_text[start:i+1]
+                    return json.loads(json_str)
+        
+        raise ValueError("No matching closing brace")
+    except:
+        pass
+    
+    # Method 4: Try to reconstruct from pattern
+    try:
+        # Extract action, selector, content using regex
+        action_match = re.search(r'"action"\s*:\s*"([^"]+)"', response_text)
+        selector_match = re.search(r'"selector"\s*:\s*"([^"]+)"', response_text)
+        content_match = re.search(r'"content"\s*:\s*"([^"]+)"', response_text)
+        
+        if action_match:
+            result = {"action": action_match.group(1)}
+            if selector_match:
+                result["selector"] = selector_match.group(1)
+            if content_match:
+                result["content"] = content_match.group(1)
+            return result
+    except:
+        pass
+    
+    raise ValueError(f"Could not parse JSON: {response_text}")
+
+
+        # Parse response
+        try:
+            response_text = response.choices[0].message.content
+            action = parse_json_response(response_text)
+            print(f"🛠️  Action: {action}")
+        except Exception as e:
+            print(f"❌ Failed to parse model response: {e}")
+            print(f"Response: {response_text}")
+            continue
+        
+        # Check if task is complete
+        if action["action"] == "answer":
+            print(f"\n✅ TASK COMPLETE: {action['content']}")
+            break
+        
+        # Execute action
+        success, result = execute_action(action, browser)
+        history.append(result)
+        
+        if not success:
+            print(f"⚠️  Action failed, will retry...")
+        
+        time.sleep(1)
+    
+    print(f"\n{'='*60}")
+    print(f"Agent finished after {step + 1} steps")
+    print(f"{'='*60}")
+    
+    # Keep browser open for inspection
+    input("\nPress Enter to close browser...")
+    browser.close()
+
+
+if __name__ == "__main__":
+    import os
+    from dotenv import load_dotenv
+    
+    load_dotenv()
+    
+    # Read task from instructions file
+    with open("instructions-native.txt", "r") as f:
+        task = f.read()
+    
+    run_agent(
+        task=task,
+        url="file:///home/justine/Documents/surfer-h-cli/automation_forms_filling/login.html",
+        api_key=os.getenv("HAI_API_KEY"),
+        model_url=os.getenv("HAI_MODEL_URL_NAVIGATION"),
+        model_name=os.getenv("HAI_MODEL_NAME_NAVIGATION"),
+        max_steps=30
+    )

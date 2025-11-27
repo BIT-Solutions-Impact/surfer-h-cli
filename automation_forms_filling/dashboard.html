@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOGWIN - Track Shipments</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+    <style display="none">
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #f5f5f5;
+        }
+
+        /* Header vert en haut */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            background-color: #8cb938;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header-logo img {
+            height: 40px;
+            width: auto;
+        }
+
+        .header-user {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 14px;
+        }
+
+        .header-user svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
+            cursor: pointer;
+        }
+
+        .sidebar-toggle {
+            background-color: #4a6fa5;
+            border: none;
+            color: white;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: background-color 0.2s;
+        }
+
+        .sidebar-toggle:hover {
+            background-color: #3d5a8a;
+        }
+
+        .sidebar.hidden {
+            transform: translateX(-100%);
+        }
+
+        .main-content.expanded {
+            margin-left: 0;
+        }
+
+        .user-circle {
+            background-color: #007bff;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-name {
+            font-weight: 500;
+        }
+
+        .user-id {
+            font-size: 11px;
+            opacity: 0.8;
+        }
+
+        /* Sidebar gauche */
+        .sidebar {
+            position: fixed;
+            top: 60px;
+            left: 0;
+            width: 220px;
+            height: calc(100vh - 60px);
+            background-color: #9e9e9e;
+            border-right: 1px solid #888;
+            padding: 20px 15px;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar h3 {
+            font-size: 12px;
+            color: #fff;
+            margin: 20px 0 10px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .sidebar-item {
+            padding: 10px 12px;
+            margin: 5px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #fff;
+            transition: background-color 0.2s;
+        }
+
+        .sidebar-item:hover {
+            background-color: #888;
+        }
+
+        .sidebar-item.active {
+            background-color: #7a7a7a;
+            color: #fff;
+            font-weight: 500;
+        }
+
+        .logout-btn {
+            margin-top: 30px;
+            padding: 10px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 14px;
+        }
+
+        .logout-btn:hover {
+            background-color: #c82333;
+        }
+
+        /* Contenu principal */
+        .main-content {
+            margin-left: 220px;
+            margin-top: 60px;
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .breadcrumb {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        /* Cards blanches */
+        .card {
+            background-color: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title .icon-edit {
+            color: #8cb938;
+            font-size: 16px;
+        }
+
+        .card-title svg {
+            width: 18px;
+            height: 18px;
+            fill: #8cb938;
+        }
+
+        /* Formulaire de recherche */
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .form-input, .form-select {
+            padding: 9px 12px;
+            border: 1px solid #d0d0d0;
+            border-radius: 3px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #8cb938;
+        }
+
+        /* Champs avec icône calendrier */
+        .date-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .date-input-wrapper input {
+            flex: 1;
+            padding-right: 35px;
+        }
+
+        /* Cacher l'icône calendrier par défaut du navigateur */
+        .date-input-wrapper input[type="date"]::-webkit-calendar-picker-indicator {
+            opacity: 0;
+            position: absolute;
+            right: 8px;
+            width: 26px;
+            height: 26px;
+            cursor: pointer;
+        }
+
+        .calendar-icon {
+            position: absolute;
+            right: 8px;
+            background-color: #8cb938;
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 3px;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .calendar-icon svg {
+            width: 16px;
+            height: 16px;
+            fill: white;
+        }
+
+        .btn-search {
+            padding: 10px 30px;
+            background-color: #8cb938;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-search:hover {
+            background-color: #7aa330;
+        }
+
+        .btn-search svg {
+            width: 16px;
+            height: 16px;
+            fill: white;
+        }
+
+        /* Conteneur avec scroll horizontal pour la table */
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            margin-top: 15px;
+        }
+
+        /* Table de résultats */
+        .results-table {
+            width: 100%;
+            min-width: 1400px;
+            border-collapse: collapse;
+        }
+
+        .results-table th {
+            background-color: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #dee2e6;
+            white-space: nowrap;
+        }
+
+        .results-table td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 14px;
+            color: #555;
+            white-space: nowrap;
+        }
+
+        .results-table tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            font-size: 14px;
+        }
+
+    </style>
+</head>
+<body>
+    <!-- Header vert -->
+    <div class="header">
+        <div class="header-logo">
+            <img src="assets/logo2.png" alt="LOGWIN Logo">
+            <button class="sidebar-toggle" onclick="toggleSidebar()">‹</button>
+        </div>
+        <div class="header-user">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/>
+            </svg>
+            <div class="user-circle">h</div>
+            <div class="user-info">
+                <span class="user-name">Hannelore Bojes</span>
+                <span class="user-id">h.bojes</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h3>START</h3>
+        <div class="sidebar-item">Dashboard</div>
+        
+        <h3>TRACKING</h3>
+        <div class="sidebar-item active">Track shipments</div>
+        <div class="sidebar-item">Track containers</div>
+        
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <!-- Contenu principal -->
+    <div class="main-content">
+        <div class="breadcrumb">> Tracking > Track shipments</div>
+
+        <!-- Card de recherche -->
+        <div class="card">
+            <div class="card-title">
+                Search 
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                </svg>
+            </div>
+            
+            <form id="searchForm" onsubmit="handleSearch(event)">
+                <!-- Ligne 1 -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select class="form-select" id="status">
+                            <option>- All -</option>
+                            <option>In Transit</option>
+                            <option>Arrived</option>
+                            <option>Delivered</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>MOT</label>
+                        <select class="form-select" id="mot">
+                            <option>- All -</option>
+                            <option>Sea</option>
+                            <option>Air</option>
+                            <option>Road</option>
+                            <option>Rail</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Shipment No.</label>
+                        <input type="text" class="form-input" id="shipmentNo" placeholder="SHIP001">
+                    </div>
+                </div>
+
+                <!-- Ligne 2 -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>House</label>
+                        <input type="text" class="form-input" id="house">
+                    </div>
+                    <div class="form-group">
+                        <label>PO Number</label>
+                        <input type="text" class="form-input" id="poNumber">
+                    </div>
+                    <div class="form-group">
+                        <label>Shipper Ref.</label>
+                        <input type="text" class="form-input" id="shipperRef">
+                    </div>
+                </div>
+
+                <!-- Ligne 3 -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Additional Ref.</label>
+                        <input type="text" class="form-input" id="additionalRef">
+                    </div>
+                    <div class="form-group">
+                        <label>Container</label>
+                        <input type="text" class="form-input" id="container">
+                    </div>
+                    <div class="form-group">
+                        <label>Estimated Departure (ETD)</label>
+                        <div class="date-input-wrapper">
+                            <input type="date" class="form-input" id="etdDate">
+                            <span class="calendar-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                    <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/>
+                                </svg>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ligne 4 -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Estimated Arrival (ETA)</label>
+                        <div class="date-input-wrapper">
+                            <input type="date" class="form-input" id="etaDate">
+                            <span class="calendar-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                    <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/>
+                                </svg>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="form-group"></div>
+                    <div class="form-group"></div>
+                </div>
+
+                <button type="submit" class="btn-search">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                    </svg>
+                    Search
+                </button>
+            </form>
+        </div>
+
+        <!-- Card de résultats -->
+        <div class="card">
+            <div class="card-title">Result (<span id="resultCount">0</span>)</div>
+            
+            <div id="resultsContainer">
+                <div class="no-results">0-0 of 0 records</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Données de test
+        const DUMMY_DB = {
+            "SHIP001": {
+                "Status": "In Transit",
+                "MOT": "Sea",
+                "Origin": "Hamburg",
+                "Destination": "New York",
+                "ShipmentNo": "SHIP001",
+                "House": "H123",
+                "Master": "M456",
+                "Shipper": "ACME Corp",
+                "Consignee": "Globex Inc",
+                "ETD": "2025-09-19",
+                "ETA": "2025-10-05"
+            },
+            "SHIP002": {
+                "Status": "Arrived",
+                "MOT": "Air",
+                "Origin": "Tokyo (NRT)",
+                "Destination": "Frankfurt (FRA)",
+                "ShipmentNo": "SHIP002",
+                "House": "AWB-998",
+                "Master": "MAWB-001",
+                "Shipper": "Sony Electronics",
+                "Consignee": "MediaMarkt DE",
+                "ETD": "2025-09-20",
+                "ETA": "2025-09-21"
+            },
+            "SHIP003": {
+                "Status": "Customs Hold",
+                "MOT": "Sea",
+                "Origin": "Shanghai",
+                "Destination": "Rotterdam",
+                "ShipmentNo": "SHIP003",
+                "House": "H-SHANG-003",
+                "Master": "MSC-T55",
+                "Shipper": "Fast Textiles Ltd",
+                "Consignee": "Fashion Nova",
+                "ETD": "2025-08-15",
+                "ETA": "2025-09-30"
+            }
+        };
+
+        function handleSearch(event) {
+            event.preventDefault();
+            const shipmentNo = document.getElementById('shipmentNo').value.trim();
+            
+            if (!shipmentNo) {
+                alert('Veuillez entrer un numéro de shipment');
+                return;
+            }
+
+            const result = DUMMY_DB[shipmentNo];
+            const resultsContainer = document.getElementById('resultsContainer');
+            const resultCount = document.getElementById('resultCount');
+
+            if (result) {
+                resultCount.textContent = '1';
+                resultsContainer.innerHTML = `
+                    <div class="table-wrapper">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>MOT</th>
+                                <th>Port of Origin</th>
+                                <th>Port of Destination</th>
+                                <th>Shipment No.</th>
+                                <th>House</th>
+                                <th>Master</th>
+                                <th>Shipper</th>
+                                <th>Consignee</th>
+                                <th>PO Number</th>
+                                <th>Shipper Ref.</th>
+                                <th>Additional Ref.</th>
+                                <th>ETD</th>
+                                <th>ETA</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>${result.Status}</td>
+                                <td>${result.MOT}</td>
+                                <td>${result.Origin}</td>
+                                <td>${result.Destination}</td>
+                                <td>${result.ShipmentNo}</td>
+                                <td>${result.House}</td>
+                                <td>${result.Master}</td>
+                                <td>${result.Shipper}</td>
+                                <td>${result.Consignee}</td>
+                                <td>-</td>
+                                <td>-</td>
+                                <td>-</td>
+                                <td>${result.ETD}</td>
+                                <td>${result.ETA}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    </div>
+                    <div class="pagination">1-1 of 1 records &nbsp; &lt; &nbsp; &gt;</div>
+                `;
+            } else {
+                resultCount.textContent = '0';
+                resultsContainer.innerHTML = '<div class="no-results">No records found</div>';
+            }
+        }
+
+        function logout() {
+            if (confirm('Voulez-vous vous déconnecter ?')) {
+                window.location.href = 'login.html';
+            }
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const mainContent = document.querySelector('.main-content');
+            
+            sidebar.classList.toggle('hidden');
+            mainContent.classList.toggle('expanded');
+        }
+    </script>
+</body>
+</html>
